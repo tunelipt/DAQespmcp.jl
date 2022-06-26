@@ -5,9 +5,9 @@ using PyCall
 using AbstractDAQs
 import Dates: DateTime, now
 import DataStructures: OrderedDict
-export DAQespmcp, daqconfigdev, daqstop, daqacquire
+export EspMcp, daqconfigdev, daqstop, daqacquire, daqaddinput
 export daqstart, daqread, samplesread, isreading
-
+export daqchannels, numchannels
 
 
 mutable struct EspMcp <: AbstractDAQ
@@ -27,6 +27,7 @@ function EspMcp(devname, ip, port=9541, Eref=2.5)
     xmlrpc = pyimport("xmlrpc.client")
     server = xmlrpc.ServerProxy("http://$ip:$port")
     conf = DAQConfig(devname=devname, ip=ip, model="ESPMCPdaq")
+    
     chans = collect(1:32)
     channames = string.('E', numstring.(chans, 2))
     chanidx = OrderedDict{String,Int}()
@@ -38,6 +39,35 @@ function EspMcp(devname, ip, port=9541, Eref=2.5)
               chans, channames, chanidx,
               now())
 
+    
+end
+
+
+function AbstractDAQs.daqaddinput(dev::EspMcp, chans=1:32; names="E")
+    cmin, cmax = extrema(chans)
+    if cmin < 1 || cmax > 32
+        throw(ArgumentError("Only channels 1-32 are available to EspMcp"))
+    end
+
+    if isa(names, AbstractString) || isa(names, Symbol)
+        chn = string(names) .* numstring.(chans)
+    elseif length(names) == length(chans)
+        chn = string.(names)
+    else
+        throw(ArgumentError("Argument `names` should have length 1 or the length of `chans`"))
+    end
+
+    dev.chans = collect(chans)
+    dev.channames = chn
+    n = length(chans)
+    chanidx = Dict{String,Int}()
+    for i in 1:n
+        chanidx[chn[i]] = i
+    end
+    dev.chanidx = chanidx
+    
+
+    return
     
 end
 
@@ -58,7 +88,7 @@ function AbstractDAQs.daqconfigdev(dev::EspMcp; kw...)
     end
 
     if haskey(kw, :period)
-        fps = round(Int, kw[:period])
+        period = round(Int, kw[:period])
         dev.server["period"](period)
         dev.conf.ipars["period"] = period
     end
@@ -86,7 +116,7 @@ function AbstractDAQs.daqacquire(dev::EspMcp)
     dev.time = now()
     E,f =   parse_xmlrpc_response(dev.server["scanbin"](), dev.Eref)
     return MeasData{Matrix{Float64}}(devname(dev), devtype(dev),
-                                     dev.time, f, E, dev.chanidx)
+                                     dev.time, f, E[dev.chans,:], dev.chanidx)
 end
 
 function AbstractDAQs.daqstart(dev::EspMcp)
@@ -98,7 +128,7 @@ end
 function AbstractDAQs.daqread(dev::EspMcp)
     E,f =   parse_xmlrpc_response(dev.server["readbin"](), dev.Eref)
     return MeasData{Matrix{Float64}}(devname(dev), devtype(dev),
-                                     dev.time, f, E, dev.chanidx)
+                                     dev.time, f, E[dev.chans,:], dev.chanidx)
 end
 
 function AbstractDAQs.isreading(dev::EspMcp)
@@ -109,5 +139,8 @@ function AbstractDAQs.samplesread(dev::EspMcp)
     return dev.server["samplesread"]()
 end
 
+AbstractDAQs.daqchannels(dev::EspMcp) = dev.channames
+AbstractDAQs.numchannels(dev::EspMcp) = length(dev.chans)
 
+    
 end
