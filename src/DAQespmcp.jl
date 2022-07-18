@@ -60,7 +60,7 @@ function AbstractDAQs.daqaddinput(dev::EspMcp, chans=1:32; names="E")
     dev.chans = collect(chans)
     dev.channames = chn
     n = length(chans)
-    chanidx = Dict{String,Int}()
+    chanidx = OrderedDict{String,Int}()
     for i in 1:n
         chanidx[chn[i]] = i
     end
