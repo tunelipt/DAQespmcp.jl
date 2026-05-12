@@ -1,19 +1,23 @@
 name = "DAQespmcp"
 uuid = "f3e4bcfe-7d21-43ac-ae28-23b30559a756"
+version = "0.2.0"
 authors = ["Paulo José Saiz Jabardo"]
-version = "0.1.0"
 
 [deps]
 DAQCore = "7b03aed3-9854-4651-ba28-76b88bef8818"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+LabDaqConfig = "b1745ee5-fa00-4f0d-bceb-6dd31eba1690"
 LibSerialPort = "a05a14c7-6e3b-5ba9-90a2-45558833e1df"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
+LabDaqConfig = "0.1.1"
 LibSerialPort = "0.5.2"
+TOML = "1.0.3"
 julia = "1"
 
 [extras]

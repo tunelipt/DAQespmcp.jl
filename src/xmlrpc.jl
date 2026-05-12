@@ -20,7 +20,7 @@ mutable struct EspMcpClient <: AbstractInputDev
     usethread::Bool
 end
 
-function EspMcpClient(;devname="ESPMCP", ip="192.168.0.145", port=9523,
+function EspMcpClient(;devname="ESPMCP", ip="192.168.0.145", port=9541,
                       usethread=true, vref=2.5)
     xmlrpc = pyimport("xmlrpc.client")
     server = xmlrpc.ServerProxy("http://$ip:$port")
@@ -35,6 +35,52 @@ function EspMcpClient(;devname="ESPMCP", ip="192.168.0.145", port=9523,
     
 end
 
+function tomltoespmcpclient(toml)
+    haskey(toml, "type") || error("TOML should type!")
+    t = toml["type"] 
+    if  t != "espmcpclient"
+        error("Unknown type $t")
+    end
+
+    # First we need the ip and port - XMLRPC stuff
+    haskey(toml, "ip") || error("A XML-RPC DAQespmcp client should have the field `ip`")
+    haskey(toml, "port") || error("A XML-RPC DAQespmcp client should have the field `port`")
+    haskey(toml, "name") || error("Every daq device should have a name")
+
+    if !haskey(toml, "vref")
+        vref = 2.5
+    else
+        vref = toml["vref"]
+    end
+    
+        
+    ip = toml["ip"]
+    port = toml["port"]
+    name = toml["name"]
+
+    # Channels: 1-32.
+    if !haskey(toml, "channels")
+        chans = 1:32
+    else
+        chans = Int.(tom["channels"])
+    end
+
+    # Let's get daq configuration
+    haskey(toml, "config") || error("No configuration available!")
+
+    fps = toml["config"]["fps"]
+    avg = toml["config"]["avg"]
+    period = toml["config"]["period"]
+
+    # Now, let's build the object
+    
+    dev = EspMcpClient(; devname=name, ip=ip, port=port, vref=vref)
+    daqaddinput(dev, chans)
+    
+    daqconfigdev(dev, fps=fps, avg=avg, period=period)
+    return dev
+    
+end
 
 DAQCore.devtype(dev::EspMcpClient) = "ESPMCPClient"
 
