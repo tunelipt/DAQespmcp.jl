@@ -1,7 +1,7 @@
 name = "DAQespmcp"
 uuid = "f3e4bcfe-7d21-43ac-ae28-23b30559a756"
 authors = ["Paulo José Saiz Jabardo"]
-version = "1.0.0-DEV"
+version = "0.1.0"
 
 [deps]
 DAQCore = "7b03aed3-9854-4651-ba28-76b88bef8818"
