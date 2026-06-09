@@ -193,7 +193,10 @@ function read_data(dev::EspMcpClient, frames)
 end
 
 function DAQCore.daqread(dev::EspMcpClient)
-    frames = dev.server["read_raw"]()
+    if dev.server["isacquiring"]()
+        dev.server["finish_daq"]()
+    end
+    frames = dev.server["get_frames"]()
     return read_data(dev, frames)
 end
 
