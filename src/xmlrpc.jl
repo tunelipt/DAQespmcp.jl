@@ -6,6 +6,7 @@ import DataStructures: OrderedDict
 export EspMcpClient, daqconfigdev,daqacquire
 export daqstart, daqread, samplesread, isreading
 export daqchannels, numchannels, devname, devtype, samplingrate
+export loadconfig
 
 mutable struct EspMcpClient <: AbstractInputDev
     devname::String
@@ -25,13 +26,48 @@ function EspMcpClient(;devname="ESPMCP", ip="192.168.0.145", port=9541,
     xmlrpc = pyimport("xmlrpc.client")
     server = xmlrpc.ServerProxy("http://$ip:$port")
     
-    config = DaqConfig(ip=ip, port=port, avg=100, fps=1, period=100)
     task = DaqTask()
     
     ch = DaqChannels("E" .* numstring.(1:32), collect(1:32))
     task = DaqTask()
+
+    avg, period, fps = loadconfig(server)
+    config = DaqConfig(ip=ip, port=port, avg=avg, fps=fps, period=period)
+
     return EspMcpClient(devname, ip, port, server,
                         config, ch, now(), vref, task, usethread)
+    
+end
+
+function loadconfig(server)
+    resp = server["avg"]()
+    if resp[1] != 0
+        error("Error reading avg")
+    end
+    avg = resp[2]
+
+    resp = server["period"]()
+    if resp[1] != 0
+        error("Error reading period")
+    end
+    period = resp[2]
+
+    resp = server["fps"]()
+    if resp[1] != 0
+        error("Error reading fps")
+    end
+    fps = resp[2]
+
+    return (avg, period, fps)
+    
+end
+
+function loadconfig(dev::EspMcpClient)
+
+    avg, period, fps = loadconfig(dev.server)
+    iparam!(dev.config,  "avg", avg)
+    iparam!(dev.config,  "fps", fps)
+    iparam!(dev.config,  "period", period)
     
 end
 
@@ -116,7 +152,6 @@ end
 
 function DAQCore.daqconfigdev(dev::EspMcpClient; kw...)
     k = keys(kw)
-    cmd = Dict("avg"=>"A", "fps"=>"F", "period"=>"P")
     args = Pair{String,Int}[]
 
     if :avg ∈ k
@@ -124,7 +159,9 @@ function DAQCore.daqconfigdev(dev::EspMcpClient; kw...)
         if x < 1 || x > 500
             throw(DomainError(x, "avg outside range (1-500)!"))
         end
-        dev.server["avg"](x)
+        resp = dev.server["avg"](x)
+        code = resp[1]
+        val = resp[2]
         iparam!(dev.config, "avg", x)
     end
 
@@ -197,14 +234,23 @@ function DAQCore.daqread(dev::EspMcpClient)
         dev.server["finish_daq"]()
     end
     frames = dev.server["get_frames"]()
+    
     return read_data(dev, frames)
 end
 
 function DAQCore.daqacquire(dev::EspMcpClient)
-    frames = dev.server["scan_raw"]()
-    return  read_data(dev, frames)
+    resp = dev.server["scan_raw"]()
+    code = resp[1]
+    if code != 0
+        error("Error acquiring data code $code")
+    end
+    return  read_data(dev, resp[2])
 end
 
+
+function DAQCore.daqstop(dev::EspMcpClient)
+    dev.server["stop"]()
+end
 
 
 "Is EspMcpClient acquiring data?"

@@ -1,6 +1,6 @@
 name = "DAQespmcp"
 uuid = "f3e4bcfe-7d21-43ac-ae28-23b30559a756"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["Paulo José Saiz Jabardo"]
 
 [deps]
